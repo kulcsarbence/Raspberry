@@ -20,11 +20,13 @@ p_acceptedUID = [[0 for x in range(5)] for y in range(p_line_count)]
 
 trigPin = 35
 echoPin = 37
+gLedPin = 38
 max_dist = 220
 timeOut = max_dist*60
 
 GPIO.setup(trigPin, GPIO.OUT)
 GPIO.setup(echoPin, GPIO.IN)
+GPIO.setup(gLedPin, GPIO.OUT)
 
 def pulseTime(pin, level, timeOut):
     t0 = time.time()
@@ -138,6 +140,7 @@ def main():
                 if checkUIDmatch(uidd):
                     c = uidd
                     print("Belepes engedelyezve!")
+                    GPIO.output(gLedPin, GPIO.HIGH)
                     File3 = open(parkedPath, "a+")
                     print(c[0])
                     File3.write(str(c[0])+","+str(c[1])+","+str(c[2])+","+str(c[3])+","+str(c[4])+"\n")
@@ -151,12 +154,14 @@ def main():
                         print("")
                     print("Auto megerkezett")
                     time.sleep(sleepInterval)
+                    GPIO.output(gLedPin, GPIO.LOW)
                     print("Lecsukjuk a kaput")
                 else:
                     print("A kartya nincs a rendszerben.")
     except KeyboardInterrupt:
         with open(parkedPath, "w") as f:
             f.write("")
+        GPIO.output(gLedPin, GPIO.LOW)
         GPIO.cleanup()
 
 if __name__=="__main__":
