@@ -5,7 +5,6 @@ rdr = RFID()
 path = "acceptedUID.txt"
 GPIO.setwarnings(False)
 
-File = open(path, "a")
 line_count = sum(1 for line in open(path))
 acceptedUID = [[0 for x in range(5)] for y in range(line_count)]
 
@@ -47,11 +46,15 @@ def getUID():
 def main():
     c = getUID()
     if checkUIDmatch(c):
-        print("Ez a kartya mar a rendszerben van.")
+        print("A kartyat toroljuk a rendszerbol.")
+        with open(path, "r") as f:
+            lines = f.readlines()
+        with open(path, "w") as f:
+            for line in lines:
+                if line.strip("\n") != str(c[0])+","+str(c[1])+","+str(c[2])+","+str(c[3])+","+str(c[4]):
+                    f.write(line)
     else:
-        print("Kartya hozzaadva.")
-        File.write(str(c[0])+","+str(c[1])+","+str(c[2])+","+str(c[3])+","+str(c[4])+"\n")
-
+        print("A kartya nincs a rendszerben.")
 
 if __name__=="__main__":
     main()
