@@ -117,17 +117,39 @@ def getUID():
     rdr.cleanup()
     return toReturn
 
+def initTitter():
+    # Authenticate to Twitter
+    auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+    auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+    # Create API object
+    api = tweepy.API(auth)
+    try:
+        api.verify_credentials()
+        print("Authentication OK")
+    except:
+        print("Error during authentication")
+    return
+
+def tweetString(string):
+    pi.update_status(string) # send out tweet to twitter
+    return
 
 def main():
     global p_line_count
     try:
         while True:
+            totalSpaces = 100
+            emptySpaces=totalSpaces
+            tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))
             print(p_line_count)
             print("Elindult a while true")
             uidd = getUID()
             if p_checkUIDmatch(uidd):
                 c = uidd
                 print("Viszontlatasra")
+                if(emptySpaces != totalSpaces):
+                    emptySpaces += 1
+                    tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
                 with open(parkedPath, "r") as f:
                     lines = f.readlines()
                 with open(parkedPath, "w") as f:
@@ -140,6 +162,9 @@ def main():
                 if checkUIDmatch(uidd):
                     c = uidd
                     print("Belepes engedelyezve!")
+                    if(emptySpaces != 0):
+                        emptySpaces -= 1
+                        tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
                     GPIO.output(gLedPin, GPIO.HIGH)
                     File3 = open(parkedPath, "a+")
                     print(c[0])
