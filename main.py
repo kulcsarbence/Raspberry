@@ -117,7 +117,7 @@ def getUID():
     rdr.cleanup()
     return toReturn
 
-def initTitter():
+def initTwitter():
     # Authenticate to Twitter
     auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
     auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
@@ -140,6 +140,7 @@ def main():
         while True:
             totalSpaces = 100
             emptySpaces=totalSpaces
+            initTwitter()
             tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))
             print(p_line_count)
             print("Elindult a while true")
