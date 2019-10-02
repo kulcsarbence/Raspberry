@@ -199,7 +199,7 @@ def main():
                     File4.close()
                     p_line_count = sum(1 for line in open(parkedPath, "r"))
                     print(p_line_count)
-                    while(isThereACar()):
+                    while(not isThereACar()):
                         print("")
                     print("Auto megerkezett")
                     time.sleep(sleepInterval)
