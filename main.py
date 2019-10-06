@@ -2,6 +2,7 @@ from pirc522 import RFID
 import RPi.GPIO as GPIO
 import time
 
+
 GPIO.setmode(GPIO.BOARD)
 
 sleepInterval = 10
@@ -26,12 +27,16 @@ gatePin = 39    # gate trigger pin
 max_dist = 220
 timeOut = max_dist*60
 
-totalSpaces = 100           #inicializaljuk a max szabad helyeket, az ures helyeket
-emptySpaces=totalSpaces
+#inicializaljuk a max szabad helyeket, az ures helyeket
+global emptySpaces
+global totalSpaces
+totalSpaces = 100
+emptySpaces = totalSpaces
 
 GPIO.setup(trigPin, GPIO.OUT)
 GPIO.setup(echoPin, GPIO.IN)
 GPIO.setup(gLedPin, GPIO.OUT)
+GPIO.setup(rLedPin, GPIO.OUT)
 
 def pulseTime(pin, level, timeOut):
     t0 = time.time()
@@ -141,38 +146,37 @@ def tweetString(string):
 
 def blinkLed(led_pin):
     GPIO.output(led_pin, GPIO.HIGH)  # a kapott pinen helyezkedo ledet haromszot egymas utan felvilantjuk
-    sleep(1/2)                       # varunk 1/2 mp-t
+    time.sleep(0.25)                       # varunk 1/2 mp-t
     GPIO.output(led_pin, GPIO.LOW)
-    sleep(1/2)
+    time.sleep(0.25)
     GPIO.output(led_pin, GPIO.HIGH)
-    leep(1/2)
+    time.sleep(0.25)
     GPIO.output(led_pin, GPIO.LOW)
-    leep(1/2)
+    time.sleep(0.25)
     GPIO.output(led_pin, GPIO.HIGH)
-    leep(1/2)
+    time.sleep(0.25)
     GPIO.output(led_pin, GPIO.LOW)
     return
 
 
 def main():
-    initTwitter()       #titter initial
-    tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))     #ertesitjuk a felhasznalokat a rendszer indulasarol 
+    global emptySpaces
+    global totalSpaces
+    #initTwitter()       #titter initial
+    #tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))     #ertesitjuk a felhasznalokat a rendszer indulasarol 
     global p_line_count
     try:
         while True:
-            if emptySpaces == 0:                # ha a parkolo tele van
-                GPIO.output(rLedPin, GPIO.HIGH) #    a piros led szolidan vilagit, ezzel jelezve a felhasznalok szamara hogy nincs szabad hely
-            else:
-                GPIO.output(rLedPin, GPIO.LOW)  #    ellenkezo esetben a led kialszik
             print(p_line_count)
             print("Elindult a while true")
+            print(str(emptySpaces))
             uidd = getUID()
             if p_checkUIDmatch(uidd):
                 c = uidd
                 print("Viszontlatasra")
                 if(emptySpaces != totalSpaces):             #biztositjuk hogy a szabad helyek erteke a vart hatarakon belul maradjon
                     emptySpaces += 1
-                tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
+                #tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
                 with open(parkedPath, "r") as f:
                     lines = f.readlines()
                 with open(parkedPath, "w") as f:
@@ -182,14 +186,14 @@ def main():
                 p_line_count = sum(1 for line in open(parkedPath, "r"))
                 time.sleep(sleepInterval)
             else:
-                if checkUIDmatch(uidd) & emptySpaces != 0: #ha az uid az adatbazisban van ES van meg ures hely
+                if checkUIDmatch(uidd) & (emptySpaces > 0): #ha az uid az adatbazisban van ES van meg ures hely
                     c = uidd
                     print("Belepes engedelyezve!")
                     if(emptySpaces != 0):                   #biztositjuk hogy a szabad helyek erteke a vart hatarakon belul maradjon
                         emptySpaces -= 1
-                    tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
+                    #tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
                     GPIO.output(gLedPin, GPIO.HIGH)
-                    GPIO.output(gatePin, GPIO.HIGH) #aktivaljuk a gate pin-t
+                    #GPIO.output(gatePin, GPIO.HIGH) #aktivaljuk a gate pin-t
                     File3 = open(parkedPath, "a+")
                     print(c[0])
                     File3.write(str(c[0])+","+str(c[1])+","+str(c[2])+","+str(c[3])+","+str(c[4])+"\n")
@@ -205,14 +209,20 @@ def main():
                     time.sleep(sleepInterval)
                     GPIO.output(gLedPin, GPIO.LOW)
                     print("Lecsukjuk a kaput")
-                    GPIO.output(gatePin, GPIO.LOW)
+                    #GPIO.output(gatePin, GPIO.LOW)
                 else:
-                    print("A kartya nincs a rendszerben.")
-                    blinkLed(rLedPin)
+                    if emptySpaces==0:
+                        print("Nincs szabad hely!")
+                        blinkLed(rLedPin)
+                    else:
+                        print("Nem szerepel ez a kartya az adatbazisban!")
+                        blinkLed(rLedPin)
+                    time.sleep(1)
     except KeyboardInterrupt:
         with open(parkedPath, "w") as f:
             f.write("")
         GPIO.output(gLedPin, GPIO.LOW)
+        GPIO.output(rLedPin, GPIO.LOW)
         GPIO.cleanup()
 
 if __name__=="__main__":
