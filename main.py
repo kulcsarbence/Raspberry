@@ -1,7 +1,7 @@
 from pirc522 import RFID
 import RPi.GPIO as GPIO
 import time
-
+import tweepy
 
 GPIO.setmode(GPIO.BOARD)
 
@@ -30,6 +30,7 @@ timeOut = max_dist*60
 #inicializaljuk a max szabad helyeket, az ures helyeket
 global emptySpaces
 global totalSpaces
+global api
 totalSpaces = 100
 emptySpaces = totalSpaces
 
@@ -129,9 +130,12 @@ def getUID():
 
 def initTwitter():
     # Authenticate to Twitter
-    auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-    auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+    with open("secret.txt", "r") as fd:
+            lines = fd.read().splitlines()
+    auth = tweepy.OAuthHandler(lines[0], lines[1])
+    auth.set_access_token(lines[2], lines[3])
     # Create API object
+    global api
     api = tweepy.API(auth)
     try:
         api.verify_credentials()
@@ -141,7 +145,8 @@ def initTwitter():
     return
 
 def tweetString(string):
-    pi.update_status(string) # send out tweet to twitter
+    global api
+    api.update_status(string) # send out tweet to twitter
     return
 
 def blinkLed(led_pin):
@@ -162,11 +167,16 @@ def blinkLed(led_pin):
 def main():
     global emptySpaces
     global totalSpaces
-    #initTwitter()       #titter initial
+    counter = 0
+    initTwitter()       #titter initial
     #tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))     #ertesitjuk a felhasznalokat a rendszer indulasarol 
     global p_line_count
     try:
         while True:
+            counter = counter+1
+            if (counter>5):
+                counter=0
+                tweetString("Jelenleg a szabad helyek szama: "+str(emptySpaces))
             print(p_line_count)
             print("Elindult a while true")
             print(str(emptySpaces))
