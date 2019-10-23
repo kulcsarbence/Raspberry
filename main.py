@@ -2,6 +2,7 @@ from pirc522 import RFID
 import RPi.GPIO as GPIO
 import time
 import tweepy
+import I2C_LCD_driver
 
 GPIO.setmode(GPIO.BOARD)
 
@@ -163,16 +164,24 @@ def blinkLed(led_pin):
     GPIO.output(led_pin, GPIO.LOW)
     return
 
+# i2c lcd config and functions
+mylcd = I2C_LCD_driver.lcd()
+def printToLcd(spaces):
+    mylcd.lcd_clear()
+    mylcd.lcd_display_string("A szabad helyek szama: ", 1)
+    mylcd.lcd_display_string("    %s" %spaces, 2)
+    return
 
 def main():
     global emptySpaces
     global totalSpaces
     counter = 0
-    initTwitter()       #titter initial
-    #tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))     #ertesitjuk a felhasznalokat a rendszer indulasarol 
+    initTwitter()       #twitter initializatio
+    #tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))     #ertesitjuk a felhasznalokat a rendszer indulasarol
     global p_line_count
     try:
         while True:
+            printToLcd(str(emptySpaces))
             counter = counter+1
             if (counter>5):
                 counter=0
