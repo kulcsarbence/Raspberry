@@ -2,9 +2,14 @@
 <html>
 <head>
 <link rel="stylesheet" type="text/css" href="main.css">
+<meta charset="utf-8">
 </head>
 <body>
+<h1>Parking Support</h2>
+<hr></hr>
 <h2>Accepted cards</h2>
+<img src="bg2.jpg" align="left">
+<img src="bg2.jpg" align="right">
 <?php include ('prog.php'); ?>
 <h2>Currently parked cards</h2>
 <?php include ('prog2.php'); ?>
@@ -18,5 +23,6 @@
     <input type="text" name="id" id="id" value=""><br>
     <input type="submit">
 </form>
+
 </body>
 </html>
