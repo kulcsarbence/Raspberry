@@ -19,15 +19,14 @@
     text-shadow: 1px 1px 1px #fff;
 }
 html, body {
-	    height: 100%;
-    }
+    height: 100%;
+}
 
-    html {
-	        display: table;
-		    margin: auto;
-	    }
-
-	    body {
-		        display: table-cell;
-		    }
+html {
+   display: table;
+   margin: auto;
+}
+body {
+   display: table-cell;
+}
 

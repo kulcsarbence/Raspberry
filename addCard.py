@@ -2,10 +2,12 @@ from pirc522 import RFID
 import RPi.GPIO as GPIO
 import mysql.connector
 
+#letrehozunk egy RFID objektumot
 rdr = RFID()
 
 GPIO.setwarnings(False)
-#acceptedUID[i] = [x.strip() for x in string.split('-')]
+
+#a kartya UID-jenek megszerzese, egy listat kapunk
 def getUID():
     toReturn = [0 for x in range(5)]
     while True:
