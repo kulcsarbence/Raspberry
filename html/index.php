@@ -15,12 +15,12 @@
 <?php include ('prog2.php'); ?>
 <h3>Add Card Number Separated By Commas</h3>
 <form action="add.php" method="POST">
-    <input type="text" name="cardnumber" id="cardnumber" value=""><br>
+    <input type="text" name="cardnumber" pattern="[0-9]{1,3}[,][0-9]{1,3}[,][0-9]{1,3}[,][0-9]{1,3}[,][0-9]{1,3}" id="cardnumber" value=""><br>
     <input type="submit">
 </form>
 <h3>Delete Card By ID</h3>
 <form action="delete.php" method="POST">
-    <input type="text" name="id" id="id" value=""><br>
+    <input type="text" name="id" id="id" pattern="[0-9]{1,}" value=""><br>
     <input type="submit">
 </form>
 
