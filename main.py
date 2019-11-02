@@ -129,6 +129,7 @@ def main():
                      # Create LCD, passing in MCP GPIO adapter.
     lcd = Adafruit_CharLCD(pin_rs=0, pin_e=2, pins_db=[4,5,6,7], GPIO=mcp)
     mcp.output(3,1) # LCD hattervilagitas
+    lcd.clear()
     lcd.begin(16,2) # Sorok oszlopok beallitasa
     lcd.setCursor(0,0)
     lcd.message('Szabad helyek:\n')
@@ -165,6 +166,9 @@ def main():
             cursor2.execute(sql_select_db2, (val,) )
             if cursor2.fetchone():
                 blinkLed(gLedPin)
+                lcd.clear()
+                lcd.setCursor(0,0)
+                lcd.message('Viszontlatasra')
                 print("Viszontlatasra")
                 if(emptySpaces != totalSpaces):             #biztositjuk hogy a szabad helyek erteke a vart hatarakon belul maradjon
                     emptySpaces += 1
@@ -174,6 +178,10 @@ def main():
             else:
                 cursor1.execute(sql_select_db, (val,))
                 if (cursor1.fetchone() is not None) & (emptySpaces > 0): #ha az uid az adatbazisban van ES van meg ures hely
+                    lcd.clear()
+                    lcd.setCursor(0,0)
+                    lcd.message('Belepes\n')
+                    lcd.message('engedelyezve')
                     print("Belepes engedelyezve!")
                     if(emptySpaces != 0):                   #biztositjuk hogy a szabad helyek erteke a vart hatarakon belul maradjon
                         emptySpaces -= 1
@@ -182,7 +190,26 @@ def main():
                     cursor2.execute(sql_addcard_db2, (val,))
                     mydb2.commit()
                     while(not isThereACar()):
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Belepes\n')
+                        lcd.message('engedelyezve.')  
+                        time.sleep(0.2)
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Belepes\n')
+                        lcd.message('engedelyezve..')
+                        time.sleep(0.2)
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Belepes\n')
+                        lcd.message('engedelyezve...')
+                        time.sleep(0.2)
                         print("")
+                    lcd.clear()
+                    lcd.setCursor(0,0)
+                    lcd.message('Auto\n')
+                    lcd.message('megerkezett')
                     print("Auto megerkezett")
                     time.sleep(sleepInterval)
                     GPIO.output(gLedPin, GPIO.LOW)
@@ -190,9 +217,16 @@ def main():
                     #GPIO.output(gatePin, GPIO.LOW)
                 else:
                     if emptySpaces==0:
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Nincs hely')
                         print("Nincs szabad hely!")
                         blinkLed(rLedPin)
                     else:
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Nincs az\n')
+                        lcd.message('adatbazisban')
                         print("Nem szerepel ez a kartya az adatbazisban!")
                         blinkLed(rLedPin)
                     time.sleep(1)
