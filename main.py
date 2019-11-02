@@ -3,6 +3,8 @@ import RPi.GPIO as GPIO
 import time
 import tweepy
 import mysql.connector
+from PCF8574 import PCF8574_GPIO
+from Adafruit_LCD1602 import Adafruit_CharLCD
 
 GPIO.setmode(GPIO.BOARD)
 
@@ -112,6 +114,25 @@ def blinkLed(led_pin):
 
 
 def main():
+    global emptySpaces
+    PCF8574_address = 0x27 # I2C address of the PCF8574 chip.
+    PCF8574A_address = 0x3F # I2C address of the PCF8574A chip.
+    # Create PCF adapter
+    try:
+        mcp = PCF8574_GPIO(PCF8574_address)
+    except:
+        try:
+            mcp = PCF8574_GPIO(PCF8574A_address)
+        except:
+            print ('I2C Address Error !')
+            exit(1)
+                     # Create LCD, passing in MCP GPIO adapter.
+    lcd = Adafruit_CharLCD(pin_rs=0, pin_e=2, pins_db=[4,5,6,7], GPIO=mcp)
+    mcp.output(3,1) # LCD hattervilagitas
+    lcd.begin(16,2) # Sorok oszlopok beallitasa
+    lcd.setCursor(0,0)
+    lcd.message('Szabad helyek:\n')
+    lcd.message(str(emptySpaces))
     mydb = mysql.connector.connect(host="localhost",user="bence",passwd="benc1e",database="db")
     mydb2 = mysql.connector.connect(host="localhost",user="bence",passwd="benc1e",database="db2")
     cursor1 = mydb.cursor()
@@ -123,14 +144,18 @@ def main():
     sql_select_db2 = "SELECT cardnumber FROM parked WHERE cardnumber = %s"
     cursor2.execute("DELETE FROM parked")
     mydb2.commit()
-    global emptySpaces
     global totalSpaces
     counter = 0
     initTwitter()       #twitter inicializacio 
     try:
         while True:
+            lcd.clear()
+            lcd.setCursor(0,0)
+            lcd.message('Szabad helyek:\n')
+            time.sleep(1)
+            lcd.message(str(emptySpaces))
             counter = counter+1
-            if (counter>5):
+            if (counter>10):
                 counter=0
                 tweetString("Jelenleg a szabad helyek szama: "+str(emptySpaces))
             print("Elindult a while true")
@@ -181,6 +206,7 @@ def main():
         cursor2.close()
         mydb.close()
         mydb2.close()
+        lcd.clear()
 
 if __name__=="__main__":
     main()
