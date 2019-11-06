@@ -2,22 +2,17 @@ from pirc522 import RFID
 import RPi.GPIO as GPIO
 import time
 import tweepy
-import I2C_LCD_driver
+
+import mysql.connector
+from PCF8574 import PCF8574_GPIO
+from Adafruit_LCD1602 import Adafruit_CharLCD
 
 GPIO.setmode(GPIO.BOARD)
 
-sleepInterval = 10
+sleepInterval = 5
 GPIO.setwarnings(False)
 rdr = RFID()
 
-uidPath = "acceptedUID.txt"
-parkedPath = "parkedUID.txt"
-line_count = sum(1 for line in open(uidPath))
-global p_line_count
-acceptedUID = [[0 for x in range(5)] for y in range(line_count)]
-global p_acceptedUID
-p_line_count = sum(1 for line in open(parkedPath))
-p_acceptedUID = [[0 for x in range(5)] for y in range(p_line_count)]
 #Az ultrahang szenzor fuggvenyei kovetkeznek:
 
 trigPin = 35
@@ -40,6 +35,8 @@ GPIO.setup(echoPin, GPIO.IN)
 GPIO.setup(gLedPin, GPIO.OUT)
 GPIO.setup(rLedPin, GPIO.OUT)
 
+
+#a fuggveny visszaadja, hogy a kikuldott hang mennyi ido mulva erkezik vissza
 def pulseTime(pin, level, timeOut):
     t0 = time.time()
     while(GPIO.input(pin) != level):
@@ -69,54 +66,7 @@ def isThereACar():
 
 #Vege az ultrahang szenzor fuggvenyeinek
 
-def p_getAcceptedUID():
-    p_acceptedUID = [[0 for x in range(5)] for y in range(p_line_count)]
-    file2 = open(parkedPath, "r")
-    for i in range(0, p_line_count, 1):
-        string = file2.readline()
-        p_acceptedUID[i] = [x.strip() for x in string.split(',')]
-        for j in range(0,5,1):
-            print(p_acceptedUID[i][j])
-            p_acceptedUID[i][j] = int(p_acceptedUID[i][j])
-    file2.close()
-    return p_acceptedUID
-
-def p_checkUIDmatch(current_uid):
-    accepted = p_getAcceptedUID()
-    tmp = True
-    toReturn = False
-    for i in range(0, p_line_count, 1):
-        tmp = True
-        for j in range(0, 5, 1):
-            if current_uid[j]!=accepted[i][j]:
-                tmp = False
-        if tmp:
-            toReturn = True
-    return toReturn
-
-
-def getAcceptedUID():
-    file = open(uidPath, "r")
-    for i in range(0, line_count, 1):
-        string = file.readline()
-        acceptedUID[i] = [x.strip() for x in string.split(',')]
-        for j in range(0,5,1):
-            acceptedUID[i][j] = int(acceptedUID[i][j])
-    return acceptedUID
-
-def checkUIDmatch(current_uid):
-    accepted = getAcceptedUID()
-    tmp = True
-    toReturn = False
-    for i in range(0, line_count, 1):
-        tmp = True
-        for j in range(0, 5, 1):
-            if current_uid[j]!=accepted[i][j]:
-                tmp = False
-        if tmp:
-            toReturn = True
-    return toReturn
-
+#Az RFID chipnel levo kartya UIDjenek meghatarozasa
 def getUID():
     toReturn = [0 for x in range(5)]
     while True:
@@ -130,12 +80,12 @@ def getUID():
     return toReturn
 
 def initTwitter():
-    # Authenticate to Twitter
+    # Secret fajlbol kiolvassuk az autentikaciohoz szukseges adatokat
     with open("secret.txt", "r") as fd:
             lines = fd.read().splitlines()
     auth = tweepy.OAuthHandler(lines[0], lines[1])
     auth.set_access_token(lines[2], lines[3])
-    # Create API object
+    # API objektum letrehozasa
     global api
     api = tweepy.API(auth)
     try:
@@ -147,12 +97,12 @@ def initTwitter():
 
 def tweetString(string):
     global api
-    api.update_status(string) # send out tweet to twitter
+    api.update_status(string) # Twitterre kikuldjuk a tweetet
     return
 
 def blinkLed(led_pin):
     GPIO.output(led_pin, GPIO.HIGH)  # a kapott pinen helyezkedo ledet haromszot egymas utan felvilantjuk
-    time.sleep(0.25)                       # varunk 1/2 mp-t
+    time.sleep(0.25)                       # varunk 1/4 mpt
     GPIO.output(led_pin, GPIO.LOW)
     time.sleep(0.25)
     GPIO.output(led_pin, GPIO.HIGH)
@@ -162,68 +112,105 @@ def blinkLed(led_pin):
     GPIO.output(led_pin, GPIO.HIGH)
     time.sleep(0.25)
     GPIO.output(led_pin, GPIO.LOW)
-    return
-
-# i2c lcd config and functions
-mylcd = I2C_LCD_driver.lcd()
-def printToLcd(spaces):
-    mylcd.lcd_clear()
-    mylcd.lcd_display_string("A szabad helyek szama: ", 1)
-    mylcd.lcd_display_string("    %s" %spaces, 2)
     return
 
 def main():
     global emptySpaces
+    PCF8574_address = 0x27 # I2C address of the PCF8574 chip.
+    PCF8574A_address = 0x3F # I2C address of the PCF8574A chip.
+    # Create PCF adapter
+    try:
+        mcp = PCF8574_GPIO(PCF8574_address)
+    except:
+        try:
+            mcp = PCF8574_GPIO(PCF8574A_address)
+        except:
+            print ('I2C Address Error !')
+            exit(1)
+                     # Create LCD, passing in MCP GPIO adapter.
+    lcd = Adafruit_CharLCD(pin_rs=0, pin_e=2, pins_db=[4,5,6,7], GPIO=mcp)
+    mcp.output(3,1) # LCD hattervilagitas
+    lcd.clear()
+    lcd.begin(16,2) # Sorok oszlopok beallitasa
+    lcd.setCursor(0,0)
+    lcd.message('Szabad helyek:\n')
+    lcd.message(str(emptySpaces))
+    mydb = mysql.connector.connect(host="localhost",user="bence",passwd="benc1e",database="db")
+    mydb2 = mysql.connector.connect(host="localhost",user="bence",passwd="benc1e",database="db2")
+    cursor1 = mydb.cursor()
+    cursor2 = mydb2.cursor()
+    sql_addcard_db = "INSERT INTO parking (cardnumber) VALUES (%s)"
+    sql_addcard_db2 = "INSERT INTO parked (cardnumber) VALUES (%s)"
+    sql_deletecard_db2 = "DELETE FROM parked WHERE cardnumber = %s"
+    sql_select_db = "SELECT cardnumber FROM parking WHERE cardnumber = %s"
+    sql_select_db2 = "SELECT cardnumber FROM parked WHERE cardnumber = %s"
+    cursor2.execute("DELETE FROM parked")
+    mydb2.commit()
     global totalSpaces
     counter = 0
-    initTwitter()       #twitter initializatio
-    #tweetString("Megnyitottunk, a helyek szama: "+str(totalSpaces))     #ertesitjuk a felhasznalokat a rendszer indulasarol
-    global p_line_count
+    initTwitter()       #twitter inicializacio 
     try:
         while True:
-            printToLcd(str(emptySpaces))
+            lcd.clear()
+            lcd.setCursor(0,0)
+            lcd.message('Szabad helyek:\n')
+            time.sleep(1)
+            lcd.message(str(emptySpaces))
             counter = counter+1
-            if (counter>5):
+            if (counter>10):
                 counter=0
                 tweetString("Jelenleg a szabad helyek szama: "+str(emptySpaces))
-            print(p_line_count)
             print("Elindult a while true")
             print(str(emptySpaces))
             uidd = getUID()
-            if p_checkUIDmatch(uidd):
-                c = uidd
+            val = ( str(uidd[0]) + "," + str(uidd[1]) + "," + str(uidd[2]) + "," + str(uidd[3]) + "," + str(uidd[4]) )
+            cursor2.execute(sql_select_db2, (val,) )
+            if cursor2.fetchone():
+                blinkLed(gLedPin)
+                lcd.clear()
+                lcd.setCursor(0,0)
+                lcd.message('Viszontlatasra')
                 print("Viszontlatasra")
                 if(emptySpaces != totalSpaces):             #biztositjuk hogy a szabad helyek erteke a vart hatarakon belul maradjon
                     emptySpaces += 1
-                #tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
-                with open(parkedPath, "r") as f:
-                    lines = f.readlines()
-                with open(parkedPath, "w") as f:
-                    for line in lines:
-                        if line.strip("\n") != str(c[0])+","+str(c[1])+","+str(c[2])+","+str(c[3])+","+str(c[4]):
-                            f.write(line)
-                p_line_count = sum(1 for line in open(parkedPath, "r"))
+                cursor2.execute(sql_deletecard_db2, (val,))
+                mydb2.commit()
                 time.sleep(sleepInterval)
             else:
-                if checkUIDmatch(uidd) & (emptySpaces > 0): #ha az uid az adatbazisban van ES van meg ures hely
-                    c = uidd
+                cursor1.execute(sql_select_db, (val,))
+                if (cursor1.fetchone() is not None) & (emptySpaces > 0): #ha az uid az adatbazisban van ES van meg ures hely
+                    lcd.clear()
+                    lcd.setCursor(0,0)
+                    lcd.message('Belepes\n')
+                    lcd.message('engedelyezve')
                     print("Belepes engedelyezve!")
                     if(emptySpaces != 0):                   #biztositjuk hogy a szabad helyek erteke a vart hatarakon belul maradjon
                         emptySpaces -= 1
-                    #tweetString("Jelenleg a helyek szama: "+str(emptySpaces))
                     GPIO.output(gLedPin, GPIO.HIGH)
                     #GPIO.output(gatePin, GPIO.HIGH) #aktivaljuk a gate pin-t
-                    File3 = open(parkedPath, "a+")
-                    print(c[0])
-                    File3.write(str(c[0])+","+str(c[1])+","+str(c[2])+","+str(c[3])+","+str(c[4])+"\n")
-                    File3.close()
-                    File4 = open(parkedPath, "r")
-                    print(File4.readlines())
-                    File4.close()
-                    p_line_count = sum(1 for line in open(parkedPath, "r"))
-                    print(p_line_count)
+                    cursor2.execute(sql_addcard_db2, (val,))
+                    mydb2.commit()
                     while(not isThereACar()):
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Belepes\n')
+                        lcd.message('engedelyezve.')  
+                        time.sleep(0.2)
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Belepes\n')
+                        lcd.message('engedelyezve..')
+                        time.sleep(0.2)
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Belepes\n')
+                        lcd.message('engedelyezve...')
+                        time.sleep(0.2)
                         print("")
+                    lcd.clear()
+                    lcd.setCursor(0,0)
+                    lcd.message('Auto\n')
+                    lcd.message('megerkezett')
                     print("Auto megerkezett")
                     time.sleep(sleepInterval)
                     GPIO.output(gLedPin, GPIO.LOW)
@@ -231,18 +218,30 @@ def main():
                     #GPIO.output(gatePin, GPIO.LOW)
                 else:
                     if emptySpaces==0:
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Nincs hely')
                         print("Nincs szabad hely!")
                         blinkLed(rLedPin)
                     else:
+                        lcd.clear()
+                        lcd.setCursor(0,0)
+                        lcd.message('Nincs az\n')
+                        lcd.message('adatbazisban')
                         print("Nem szerepel ez a kartya az adatbazisban!")
                         blinkLed(rLedPin)
                     time.sleep(1)
-    except KeyboardInterrupt:
-        with open(parkedPath, "w") as f:
-            f.write("")
+    except KeyboardInterrupt: #biztonsagi megfontolasbol mindent leallitunk
         GPIO.output(gLedPin, GPIO.LOW)
         GPIO.output(rLedPin, GPIO.LOW)
         GPIO.cleanup()
+        cursor2.execute("DELETE FROM parked")
+        mydb2.commit()
+        cursor1.close()
+        cursor2.close()
+        mydb.close()
+        mydb2.close()
+        lcd.clear()
 
 if __name__=="__main__":
     main()
